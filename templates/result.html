@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Route Weather — {{ start }} → {{ end }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0e1a;
+      --surface:  #111827;
+      --surface2: #161f31;
+      --border:   #1e2d45;
+      --accent:   #4FC3F7;
+      --accent2:  #81D4FA;
+      --warn:     #FF8A65;
+      --danger:   #F87171;
+      --text:     #E2E8F0;
+      --muted:    #64748B;
+      --success:  #34D399;
+      --mono:     'Space Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ─────────────────────────────────────── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .logo-small {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      text-transform: uppercase;
+      opacity: 0.75;
+    }
+
+    .route-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .route-label span {
+      color: var(--muted);
+      font-weight: 300;
+      margin: 0 0.4rem;
+    }
+
+    .back-btn {
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.4rem 0.85rem;
+      transition: color 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .back-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── Stats strip ─────────────────────────────────── */
+    .stats-strip {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1.5rem;
+      display: flex;
+      gap: 2rem;
+      font-size: 0.82rem;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+    }
+
+    .stat strong { color: var(--text); font-weight: 500; }
+
+    /* ── Main layout ─────────────────────────────────── */
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── Map pane ────────────────────────────────────── */
+    .map-pane {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-pane iframe,
+    .map-pane > div {
+      width: 100% !important;
+      height: 100% !important;
+      border: none;
+    }
+
+    /* Force Folium map to fill the pane */
+    .map-pane .folium-map {
+      position: absolute !important;
+      inset: 0 !important;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      background: var(--surface);
+    }
+
+    .sidebar-header {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.2rem;
+      z-index: 10;
+    }
+
+    .sidebar-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── Waypoint cards ──────────────────────────────── */
+    .wp-card {
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.2rem;
+      transition: background 0.15s;
+    }
+
+    .wp-card:hover { background: rgba(79,195,247,0.04); }
+
+    .wp-card.wind-warn {
+      border-left: 3px solid var(--danger);
+      padding-left: calc(1.2rem - 3px);
+    }
+
+    .wp-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      gap: 0.5rem;
+    }
+
+    .wp-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .wp-arrival {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
+    .wp-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      flex-shrink: 0;
+    }
+
+    .badge-clear  { background: rgba(52,211,153,0.15); color: var(--success); }
+    .badge-cloud  { background: rgba(100,116,139,0.2);  color: var(--muted); }
+    .badge-rain   { background: rgba(244,208,63,0.2);   color: #C9A227; }
+    .badge-wind   { background: rgba(248,113,113,0.15); color: var(--danger); }
+    .badge-na     { background: rgba(100,116,139,0.12); color: var(--muted); }
+    .badge-snow   { background: rgba(93,173,226,0.18);  color: #5DADE2; }
+    .badge-freeze { background: rgba(230,126,34,0.18);  color: #E67E22; }
+    .badge-thunder { background: rgba(155,89,182,0.18); color: #9B59B6; }
+
+    .wp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.3rem 0.8rem;
+      font-size: 0.78rem;
+    }
+
+    .wp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .wp-key { color: var(--muted); }
+    .wp-val { font-weight: 500; color: var(--text); }
+
+    .wind-warn-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      color: var(--danger);
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+
+    .no-weather-msg {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* ── Legend ──────────────────────────────────────── */
+    .legend-bar {
+      padding: 0.75rem 1.2rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      background: var(--surface2);
+    }
+
+    .leg-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .leg-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 768px) {
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 55vh 1fr;
+        overflow: auto;
+      }
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border);
+        overflow-y: visible;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Top bar ──────────────────────────────────────── -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo-small">▸ Route Weather</div>
+      <div class="route-label">
+        {{ start }}<span>→</span>{{ end }}
+      </div>
+    </div>
+    <a href="/" class="back-btn">← New Route</a>
+  </div>
+
+  <!-- ── Stats strip ──────────────────────────────────── -->
+  <div class="stats-strip">
+    <div class="stat">🛣 Distance: <strong>{{ total_mi }} mi</strong></div>
+    <div class="stat">⏱ Drive time: <strong>~{{ "%.1f"|format(duration_hrs) }} hrs</strong></div>
+    <div class="stat">🕐 Departs: <strong>{{ departure }}</strong></div>
+    <div class="stat">🏁 ETA: <strong>{{ eta }}</strong></div>
+
+  </div>
+
+  <!-- ── Main content ─────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Map -->
+    <div class="map-pane">
+      {{ map_html | safe }}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Weather Checkpoints &nbsp;({{ waypoints|length }})</div>
+      </div>
+
+      {% for wp in waypoints %}
+      {% set w = wp.get('weather') %}
+      {% set is_warn = w and w.wind_warning %}
+
+      <div class="wp-card {% if is_warn %}wind-warn{% endif %}">
+        <div class="wp-header">
+          <div>
+            <div class="wp-label">{{ wp.label }}</div>
+            <div class="wp-arrival">{{ wp.arrival_str }}</div>
+          </div>
+
+          {% if not w %}
+            <span class="wp-badge badge-na">N/A</span>
+          {% elif is_warn %}
+            <span class="wp-badge badge-wind">⚠ Wind</span>
+          {% elif w.precip_type == 'thunderstorm' %}
+            <span class="wp-badge badge-thunder">⛈ Thunder</span>
+          {% elif w.precip_type == 'freezing_rain' %}
+            <span class="wp-badge badge-freeze">❄ Frz. Rain</span>
+          {% elif w.precip_type == 'snow' %}
+            <span class="wp-badge badge-snow">❄ Snow</span>
+          {% elif w.precip_type == 'snow_showers' %}
+            <span class="wp-badge badge-snow">❄ Snow Shwrs</span>
+          {% elif w.precip_type == 'sleet' %}
+            <span class="wp-badge badge-freeze">🌨 Sleet</span>
+          {% elif w.precip_type == 'showers' %}
+            <span class="wp-badge badge-rain">🌦 Showers</span>
+          {% elif w.precip_type == 'rain' %}
+            <span class="wp-badge badge-rain">🌧 Rain</span>
+          {% elif w.precip_type == 'fog' %}
+            <span class="wp-badge badge-cloud">🌫 Fog</span>
+          {% elif w.cloud_pct > 75 %}
+            <span class="wp-badge badge-cloud">Cloudy</span>
+          {% else %}
+            <span class="wp-badge badge-clear">Clear</span>
+          {% endif %}
+        </div>
+
+        {% if w and w.available %}
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;font-style:italic">{{ w.condition }}</div>
+        <div class="wp-grid">
+          <div class="wp-row">
+            <span class="wp-key">🌡 Temp</span>
+            <span class="wp-val">{% if w.temp_f is not none %}{{ "%.1f"|format(w.temp_f) }}°F{% else %}—{% endif %}</span>
+          </div>
+          {% if w.precip_type in ('rain', 'showers') %}
+          <div class="wp-row">
+            <span class="wp-key">🌧 Rain</span>
+            <span class="wp-val">{{ "%.3f"|format(w.rain_in_hr if w.precip_type == 'rain' else w.showers_in_hr) }} in/h</span>
+          </div>
+          {% elif w.precip_type in ('snow', 'snow_showers') %}
+          <div class="wp-row">
+            <span class="wp-key">❄ Snow</span>
+            <span class="wp-val">{{ "%.3f"|format(w.snowfall_in_hr) }} in/h</span>
+          </div>
+          {% elif w.precip_type in ('freezing_rain', 'sleet') %}
+          <div class="wp-row">
+            <span class="wp-key">🌨 Frz/Mix</span>
+            <span class="wp-val">{{ "%.3f"|format(w.precip_in_hr) }} in/h</span>
+          </div>
+          {% elif w.precip_in_hr > 0 %}
+          <div class="wp-row">
+            <span class="wp-key">🌧 Precip</span>
+            <span class="wp-val">{{ "%.3f"|format(w.precip_in_hr) }} in/h</span>
+          </div>
+          {% endif %}
+          <div class="wp-row">
+            <span class="wp-key">☁️ Cloud</span>
+            <span class="wp-val">{{ "%.0f"|format(w.cloud_pct) }}%</span>
+          </div>
+          <div class="wp-row">
+            <span class="wp-key">👁 Vis</span>
+            <span class="wp-val">{{ "%.1f"|format(w.vis_mi) }} mi</span>
+          </div>
+          <div class="wp-row">
+            <span class="wp-key">💨 Wind</span>
+            <span class="wp-val">{{ "%.1f"|format(w.wind_mph) }} mph</span>
+          </div>
+          <div class="wp-row">
+            <span class="wp-key">🧭 Dir</span>
+            <span class="wp-val">{{ w.wind_dir }}</span>
+          </div>
+        </div>
+
+        {% if is_warn %}
+        <div class="wind-warn-tag">
+          ⚠ Winds exceed {{ wind_mph }} mph threshold
+        </div>
+        {% endif %}
+
+        {% elif w and not w.available %}
+        <div class="no-weather-msg">{{ w.reason }}</div>
+
+        {% else %}
+        <div class="no-weather-msg">Weather data unavailable</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      <div class="legend-bar">
+        <div class="leg-item"><div class="leg-dot" style="background:#2ECC71"></div>Clear</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#95A5A6"></div>Cloudy/Fog</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#F4D03F"></div>Rain/Showers</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#5DADE2"></div>Snow</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#E67E22"></div>Frz. Rain/Sleet</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#9B59B6"></div>Thunder</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#E74C3C"></div>High Winds</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

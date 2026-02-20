@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Route Weather Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0e1a;
+      --surface:   #111827;
+      --border:    #1e2d45;
+      --accent:    #4FC3F7;
+      --accent2:   #81D4FA;
+      --warn:      #FF8A65;
+      --text:      #E2E8F0;
+      --muted:     #64748B;
+      --success:   #34D399;
+      --mono:      'Space Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(79,195,247,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(129,212,250,0.04) 0%, transparent 50%);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    .header {
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    .logo {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      opacity: 0.8;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: var(--text);
+    }
+
+    h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      margin-top: 0.75rem;
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    /* ── Alerts ─────────────────────────────────────── */
+    .alert {
+      background: rgba(255,138,101,0.12);
+      border: 1px solid rgba(255,138,101,0.3);
+      border-radius: 8px;
+      padding: 0.85rem 1.1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.875rem;
+      color: var(--warn);
+      line-height: 1.55;
+    }
+
+    .alert-key {
+      background: rgba(79,195,247,0.08);
+      border: 1px solid rgba(79,195,247,0.25);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .alert-key strong { color: var(--accent); }
+    .alert-key code {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      background: rgba(79,195,247,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent2);
+    }
+
+    /* ── Card ────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 4px 40px rgba(0,0,0,0.4);
+    }
+
+    /* ── Form ────────────────────────────────────────── */
+    .field-group {
+      margin-bottom: 1.4rem;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .field-group input,
+    .field-group select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.95rem;
+      padding: 0.75rem 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      appearance: none;
+    }
+
+    .field-group input:focus,
+    .field-group select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,195,247,0.12);
+    }
+
+    .field-group input::placeholder { color: var(--muted); }
+
+    /* Row of two fields */
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Submit button ───────────────────────────────── */
+    .btn-submit {
+      width: 100%;
+      background: var(--accent);
+      color: #0a0e1a;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--sans);
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.9rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-submit:hover  { background: var(--accent2); }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* Loading state */
+    .btn-submit.loading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    /* ── Legend ──────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Footer ──────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      opacity: 0.6;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">▸ Route Weather Planner</div>
+      <h1>Drive Ahead.<br><em>Know What's Coming.</em></h1>
+      <p class="subtitle">
+        Enter your route and departure time to see real‑time IFS forecast
+        conditions at every checkpoint along the way.
+      </p>
+    </div>
+
+    {% if missing_keys %}
+    <div class="alert-key">
+      <strong>⚙ Setup required</strong> — Add the following to your <code>.env</code> file:
+      <br><br>
+      {% if 'ORS_API_KEY' in missing_keys %}
+      <strong>ORS_API_KEY</strong> — free at
+      <a href="https://openrouteservice.org/dev/#/signup" target="_blank" style="color:var(--accent)">openrouteservice.org</a>
+      (routing &amp; road geometry)<br>
+      {% endif %}
+      {% if 'EARTHMOVER_TOKEN' in missing_keys %}
+      <strong>EARTHMOVER_TOKEN</strong> — free at
+      <a href="https://app.earthmover.io" target="_blank" style="color:var(--accent)">app.earthmover.io</a>
+      → Marketplace → Brightband IFS → API Token
+      {% endif %}
+      <br>See <code>README.md</code> for full setup instructions.
+    </div>
+    {% endif %}
+
+    {% if errors %}
+      {% for err in errors %}
+      <div class="alert">⚠ {{ err }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="card">
+      <form action="/plan" method="POST" id="planForm">
+
+        <div class="section-title">Your Route</div>
+
+        <div class="field-group">
+          <label for="start">Starting Address</label>
+          <input type="text" id="start" name="start"
+                 placeholder="e.g. 123 Main St, Denver, CO"
+                 value="{{ request.form.get('start', '') }}"
+                 required>
+        </div>
+
+        <div class="field-group">
+          <label for="end">Destination</label>
+          <input type="text" id="end" name="end"
+                 placeholder="e.g. Salt Lake City, UT"
+                 value="{{ request.form.get('end', '') }}"
+                 required>
+        </div>
+
+        <div class="field-group">
+          <label for="departure">Departure Date &amp; Time</label>
+          <input type="datetime-local" id="departure" name="departure"
+                 value="{{ request.form.get('departure', '') }}"
+                 required>
+        </div>
+
+        <hr class="divider">
+        <div class="section-title">Options</div>
+
+        <div class="row-2">
+          <div class="field-group">
+            <label for="interval">Weather Interval</label>
+            <select id="interval" name="interval">
+              <option value="25"  {% if request.form.get('interval')=='25'  %}selected{% endif %}>Every 25 mi</option>
+              <option value="50"  {% if not request.form.get('interval') or request.form.get('interval')=='50' %}selected{% endif %}>Every 50 mi</option>
+              <option value="75"  {% if request.form.get('interval')=='75'  %}selected{% endif %}>Every 75 mi</option>
+              <option value="100" {% if request.form.get('interval')=='100' %}selected{% endif %}>Every 100 mi</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="avg_speed">Avg Speed (mph)</label>
+            <input type="number" id="avg_speed" name="avg_speed"
+                   min="20" max="120" step="5"
+                   value="{{ request.form.get('avg_speed', '60') }}"
+                   placeholder="60">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          Plan My Route →
+        </button>
+      </form>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="dot" style="background:#2ECC71"></div>Clear</div>
+      <div class="legend-item"><div class="dot" style="background:#95A5A6"></div>Overcast</div>
+      <div class="legend-item"><div class="dot" style="background:#E67E22"></div>Precipitation</div>
+      <div class="legend-item"><div class="dot" style="background:#E74C3C"></div>High Winds</div>
+    </div>
+
+    <div class="footer">
+      Powered by Open-Meteo (ECMWF IFS) · Routing by OpenRouteService · Geocoding by Nominatim
+    </div>
+  </div>
+
+  <script>
+    // Set default departure to now + 1 hour, rounded to next 15 min
+    const depInput = document.getElementById('departure');
+    if (!depInput.value) {
+      const now = new Date(Date.now() + 3600000);
+      now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+      depInput.value = now.toISOString().slice(0, 16);
+    }
+
+    // Loading state on submit
+    document.getElementById('planForm').addEventListener('submit', function() {
+      const btn = document.getElementById('submitBtn');
+      btn.textContent = 'Planning route…';
+      btn.classList.add('loading');
+    });
+  </script>
+</body>
+</html>
